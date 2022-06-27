@@ -98,6 +98,9 @@ void protocol2_discover(struct ifaddrs* iface) {
     char net_mask[16];
 
     strcpy(interface_name,iface->ifa_name);
+        // hack to ignore Docker interfaces
+        if(!strncmp("veth", interface_name, 4) || !strncmp("dock", interface_name, 4) || !strncmp("hass", interface_name, 4))
+            return;
     g_print("protocol2_discover: looking for HPSDR devices on %s\n",interface_name);
 
     // send a broadcast to locate metis boards on the network
@@ -189,11 +192,12 @@ gpointer protocol2_discover_receive_thread(gpointer data) {
     int bytes_read;
     struct timeval tv;
     int i;
-    int version;
+    int version, beta_version;
 
     tv.tv_sec = 2;
     tv.tv_usec = 0;
     version=0;
+    beta_version=0;
 
     setsockopt(discovery_socket, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv,sizeof(struct timeval));
 
@@ -280,7 +284,8 @@ gpointer protocol2_discover_receive_thread(gpointer data) {
                     discovered[devices].supported_transmitters=1;
 
                     version=buffer[13]&0xFF;
-                    sprintf(discovered[devices].software_version,"%d",version);
+                    beta_version=buffer[23]&0xFF;
+                    sprintf(discovered[devices].software_version,"%.1f.%d",(float)version/10, beta_version);
                     for(i=0;i<6;i++) {
                         discovered[devices].info.network.mac_address[i]=buffer[i+5];
                     }

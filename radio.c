@@ -277,7 +277,7 @@ g_print("radio_save_state: %s\n",filename);
   filterSaveState();
   bandSaveState();
 
-  for(i=0;i<radio->discovered->supported_receivers;i++) {
+  for(i=0;i<MAX_RECEIVERS&&i<radio->discovered->supported_receivers;i++) {
     if(radio->receiver[i]!=NULL) {
       receiver_save_state(radio->receiver[i]);
     }
@@ -1282,7 +1282,8 @@ g_print("create_radio for %s %d\n",d->name,d->device);
   }
 #endif
 
-  r->which_audio=USE_SOUNDIO;
+  r->which_audio=USE_PULSEAUDIO;
+  //N1GP r->which_audio=USE_SOUNDIO;
   r->which_audio_backend=0;
 
   r->swr_alarm_value = 2.0;

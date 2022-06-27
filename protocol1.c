@@ -326,7 +326,12 @@ static void start_protocol1_thread() {
         exit(-1);
       }
 
+      // 'netstat -anus', shows '10892895 receive buffer errors' and it increments quickly when RX=4 and samplerate=768K
+      // also see many SEQ errors, with a 2MB buffer this goes away
+      int size = 2 * 1024 * 1024;
+      setsockopt(data_socket, SOL_SOCKET, SO_RCVBUF, &size, (socklen_t)sizeof(int));
       int optval = 1;
+
       if(setsockopt(data_socket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval))<0) {
         perror("data_socket: SO_REUSEADDR");
       }
@@ -362,7 +367,7 @@ static gpointer receive_thread(gpointer arg) {
   unsigned char buffer[2048];
   int bytes_read;
   int ep;
-  long sequence;
+  long sequence, last_sequence=-1;
 
   fprintf(stderr, "protocol1: receive_thread\n");
   running=TRUE;
@@ -400,6 +405,9 @@ static gpointer receive_thread(gpointer arg) {
 
               switch(ep) {
                 case 6: // EP6
+                  if(sequence!=last_sequence+1 && sequence != 0)
+                      fprintf(stderr, "protocol1: sequence error, expecting %d got %d\n", last_sequence+1, sequence);
+                  last_sequence = sequence;
                   // process the data
                   process_ozy_input_buffer(&buffer[8]);
                   process_ozy_input_buffer(&buffer[520]);
@@ -1219,7 +1227,7 @@ void ozy_send_buffer() {
         nreceivers=radio->receivers;
 #endif
         if(current_rx<radio->discovered->supported_receivers) {
-          output_buffer[C0]=0x04+(current_rx*2);
+          output_buffer[C0]=(current_rx < 7)?(current_rx+2)<<1:(current_rx+11)<<1;
 #ifdef PURESIGNAL
           int v=receiver[current_rx/2]->id;
           if(isTransmitting(radio) && radio->transmitter->puresignal) {
@@ -1615,7 +1623,9 @@ void ozy_send_buffer() {
 
     if(current_rx==0) {
       command++;
-      if(command>11) {
+      //N1GP, needed for RCVRS > 8
+      //if(command>11) {
+      if(command>8) {
         command=1;
       }
     }

@@ -997,7 +997,10 @@ void protocol2_receive_specific() {
     }
     for(i=0;i<radio->discovered->supported_receivers;i++) {
       if(radio->receiver[i]!=NULL) {
+        if (i < 8)
         receive_specific_buffer[7]|=(1<<radio->receiver[i]->channel); // DDC enable
+        else // 8-15
+          receive_specific_buffer[8]|=(1<<radio->receiver[i]->channel-8); // DDC enable
         receive_specific_buffer[17+(radio->receiver[i]->channel*6)]=radio->receiver[i]->adc;
         receive_specific_buffer[18+(radio->receiver[i]->channel*6)]=((radio->receiver[i]->sample_rate/1000)>>8)&0xFF;
         receive_specific_buffer[19+(radio->receiver[i]->channel*6)]=(radio->receiver[i]->sample_rate/1000)&0xFF;
@@ -1092,6 +1095,11 @@ fprintf(stderr,"protocol2_thread\n");
     setsockopt(data_socket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
     setsockopt(data_socket, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
 
+    // 'netstat -anus', shows '10892895 receive buffer errors' and it increments quickly when RX=4 and samplerate=768K
+    // also see many SEQ errors, with a 2MB buffer this goes away
+    int size = 2 * 1024 * 1024;
+
+    setsockopt(data_socket, SOL_SOCKET, SO_RCVBUF, &size, (socklen_t)sizeof(int));
     // bind to the interface
     if(bind(data_socket,(struct sockaddr*)&radio->discovered->info.network.interface_address,radio->discovered->info.network.interface_length)<0) {
         fprintf(stderr,"protocol2_thread: bind socket failed for data_socket\n");
@@ -1163,6 +1171,14 @@ fprintf(stderr,"protocol2_thread: high_priority_addr setup for port %d\n",HIGH_P
             case RX_IQ_TO_HOST_PORT_5:
             case RX_IQ_TO_HOST_PORT_6:
             case RX_IQ_TO_HOST_PORT_7:
+            case RX_IQ_TO_HOST_PORT_8:
+            case RX_IQ_TO_HOST_PORT_9:
+            case RX_IQ_TO_HOST_PORT_10:
+            case RX_IQ_TO_HOST_PORT_11:
+            case RX_IQ_TO_HOST_PORT_12:
+            case RX_IQ_TO_HOST_PORT_13:
+            case RX_IQ_TO_HOST_PORT_14:
+            case RX_IQ_TO_HOST_PORT_15:
               ddc=sourceport-RX_IQ_TO_HOST_PORT_0;
               if(ddc>=radio->discovered->supported_receivers)  {
                 fprintf(stderr,"unexpected iq data from ddc %d\n",ddc);

@@ -51,6 +51,9 @@ static void discover(struct ifaddrs* iface) {
     struct sockaddr_in *mask;
 
     strcpy(interface_name,iface->ifa_name);
+         // hack to ignore Docker interfaces
+         if(!strncmp("veth", interface_name, 4) || !strncmp("dock", interface_name, 4) || !strncmp("hass", interface_name, 4))
+             return;
     g_print("discover: looking for HPSDR devices on %s\n", interface_name);
 
     // send a broadcast to locate hpsdr boards on the network
@@ -157,8 +160,8 @@ g_print("discover_receive_thread\n");
             perror("discovery: recvfrom socket failed for discover_receive_thread");
             break;
         }
-        g_print("discovered: received %d bytes\n",bytes_read);
         if ((buffer[0] & 0xFF) == 0xEF && (buffer[1] & 0xFF) == 0xFE) {
+            g_print("discovered: received %d bytes\n",bytes_read);
             int status = buffer[2] & 0xFF;
             if (status == 2 || status == 3) {
                 if(devices<MAX_DEVICES) {
