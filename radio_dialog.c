@@ -60,6 +60,7 @@ static GtkWidget *mute_rx_b;
 static GtkWidget *dither_b;
 static GtkWidget *random_b;
 static GtkWidget *preamp_b;
+static GtkWidget *preamp1_b;
 static GtkWidget *attenuation_label;
 static GtkWidget *attenuation_b;
 static GtkWidget *enable_attenuation_b;
@@ -490,6 +491,10 @@ static void preamp_cb(GtkWidget *widget, gpointer data) {
   adc->preamp=gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
 }
 
+static void preamp1_cb(GtkWidget *widget, gpointer data) {
+  ADC *adc=(ADC *)data;
+  adc->preamp=gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+}
 #ifdef SOAPYSDR
 static void adc_gain_value_changed_cb(GtkWidget *widget, gpointer data) {
   ADC *adc=(ADC *)data;
@@ -888,17 +893,21 @@ GtkWidget *create_radio_dialog(RADIO *radio) {
       gtk_grid_attach(GTK_GRID(adc0_grid),random_b,1,1,1,1);
       g_signal_connect(random_b,"toggled",G_CALLBACK(random_cb),&radio->adc[0]);
   
-      preamp_b=gtk_check_button_new_with_label("Preamp");
+      preamp_b=gtk_check_button_new_with_label("Preamp0");
       gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (preamp_b), radio->adc[0].preamp);
       gtk_grid_attach(GTK_GRID(adc0_grid),preamp_b,2,1,1,1);
       g_signal_connect(preamp_b,"toggled",G_CALLBACK(preamp_cb),&radio->adc[0]);
+      preamp1_b=gtk_check_button_new_with_label("Preamp1");
+      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (preamp1_b), radio->adc[1].preamp);
+      gtk_grid_attach(GTK_GRID(adc0_grid),preamp1_b,3,1,1,1);
+      g_signal_connect(preamp1_b,"toggled",G_CALLBACK(preamp1_cb),&radio->adc[1]);
   
       attenuation_label=gtk_label_new("Attenuation (dB):");
-      gtk_grid_attach(GTK_GRID(adc0_grid),attenuation_label,3,1,1,1);
+      gtk_grid_attach(GTK_GRID(adc0_grid),attenuation_label,4,1,1,1);
   
       attenuation_b=gtk_spin_button_new_with_range(0.0,31.0,1.0);
       gtk_spin_button_set_value(GTK_SPIN_BUTTON(attenuation_b),(double)radio->adc[0].attenuation);
-      gtk_grid_attach(GTK_GRID(adc0_grid),attenuation_b,4,1,1,1);
+      gtk_grid_attach(GTK_GRID(adc0_grid),attenuation_b,5,1,1,1);
       g_signal_connect(attenuation_b,"value_changed",G_CALLBACK(attenuation_value_changed_cb),&radio->adc[0]);
       break;
   }

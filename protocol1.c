@@ -328,7 +328,7 @@ static void start_protocol1_thread() {
 
       // 'netstat -anus', shows '10892895 receive buffer errors' and it increments quickly when RX=4 and samplerate=768K
       // also see many SEQ errors, with a 2MB buffer this goes away
-      int size = 2 * 1024 * 1024;
+      int size = 8 * 1024 * 1024;
       setsockopt(data_socket, SOL_SOCKET, SO_RCVBUF, &size, (socklen_t)sizeof(int));
       int optval = 1;
 
@@ -510,17 +510,18 @@ g_print("process_control_bytes: ppt=%d dot=%d dash=%d\n",radio->ptt,radio->dot,r
       }    
       #endif
       //}
-      
+#if 0
       if(radio->mercury_software_version!=control_in[2]) {
         radio->mercury_software_version=control_in[2];
         fprintf(stderr,"  Mercury Software version: %d (0x%0X)\n",radio->mercury_software_version,radio->mercury_software_version);
       }
+#endif
       if(radio->penelope_software_version!=control_in[3]) {
         radio->penelope_software_version=control_in[3];
 
         
         if(radio->discovered->device!=DEVICE_HERMES_LITE2) {        
-          fprintf(stderr,"  Penelope Software version: %d (0x%0X)\n",radio->penelope_software_version,radio->penelope_software_version);          
+          fprintf(stderr," Penelope Software version: %d (0x%0X)\n",radio->penelope_software_version,radio->penelope_software_version);          
         }
       }
       if(radio->ozy_software_version!=control_in[4]) {
@@ -548,6 +549,20 @@ g_print("process_control_bytes: ppt=%d dot=%d dash=%d\n",radio->ptt,radio->dot,r
     case 3:
       radio->AIN4=(control_in[1]<<8)+control_in[2]; // from Pennelope or Hermes
       radio->AIN6=(control_in[3]<<8)+control_in[4]; // from Pennelope or Hermes
+      break;
+    case 4:
+        if (radio->mercury_software_version[0] != control_in[1] >> 1 && control_in[1] >> 1 != 0x7F) {
+          radio->mercury_software_version[0] = control_in[1] >> 1;
+          printf("  Mercury 1 Software version: %d.%d\n", radio->mercury_software_version[0] / 10, radio->mercury_software_version[0] % 10);
+          radio->receiver[0]->adc = 0;
+        }
+
+        if (radio->mercury_software_version[1] != control_in[2] >> 1 && control_in[2] >> 1 != 0x7F) {
+          radio->mercury_software_version[1] = control_in[2] >> 1;
+          printf("  Mercury 2 Software version: %d.%d\n", radio->mercury_software_version[1] / 10, radio->mercury_software_version[1] % 10);
+          radio->discovered->adcs = 2;
+          if (radio->receivers > 1) { radio->receiver[1]->adc = 1; }
+        }
       break;
   }
 }
@@ -748,13 +763,15 @@ static void process_ozy_input_buffer(char  *buffer) {
         radio->IO1=control_in[1]&0x02==0x02;
         radio->IO2=control_in[1]&0x04==0x04;
         radio->IO3=control_in[1]&0x08==0x08;
+#if 0
         if(radio->mercury_software_version!=control_in[2]) {
           radio->mercury_software_version=control_in[2];
           fprintf(stderr,"  Mercury Software version: %d (0x%0X)\n",radio->mercury_software_version,radio->mercury_software_version);
         }
+#endif
         if(radio->penelope_software_version!=control_in[3]) {
           radio->penelope_software_version=control_in[3];
-          fprintf(stderr,"  Penelope Software version: %d (0x%0X)\n",radio->penelope_software_version,radio->penelope_software_version);
+          fprintf(stderr," Penelope Software version: %d (0x%0X)\n",radio->penelope_software_version,radio->penelope_software_version);
         }
         if(radio->ozy_software_version!=control_in[4]) {
           radio->ozy_software_version=control_in[4];
@@ -773,6 +790,19 @@ static void process_ozy_input_buffer(char  *buffer) {
         radio->AIN4=(control_in[1]<<8)+control_in[2]; // from Pennelope or Hermes
         radio->AIN6=(control_in[3]<<8)+control_in[4]; // from Pennelope or Hermes
         break;
+      case 4:
+        if (radio->mercury_software_version[0] != control_in[1] >> 1 && control_in[1] >> 1 != 0x7F) {
+          radio->mercury_software_version[0] = control_in[1] >> 1;
+          printf("  Mercury 1 Software version: %d.%d\n", radio->mercury_software_version[0] / 10, radio->mercury_software_version[0] % 10);
+          radio->receiver[0]->adc = 0;
+        }
+
+        if (radio->mercury_software_version[1] != control_in[2] >> 1 && control_in[2] >> 1 != 0x7F) {
+          radio->mercury_software_version[1] = control_in[2] >> 1;
+          printf("  Mercury 2 Software version: %d.%d\n", radio->mercury_software_version[1] / 10, radio->mercury_software_version[1] % 10);
+          if (receivers > 1) { radio->receiver[1]->adc = 1; }
+        }
+
     }
 
 #ifdef PURESIGNAL
@@ -1065,9 +1095,16 @@ void ozy_send_buffer() {
       if (radio->atlas_mic_source)
         output_buffer[C1] |= PENELOPE_MIC;
       output_buffer[C1] |= CONFIG_BOTH;
-      if (radio->atlas_clock_source_128mhz)
-        output_buffer[C1] |= MERCURY_122_88MHZ_SOURCE;
-      output_buffer[C1] |= ((radio->atlas_clock_source_10mhz & 3) << 2);
+
+      if (radio->penelope_software_version != 0x00)  {
+        output_buffer[C1] |= PENELOPE_122_88MHZ_SOURCE;
+        output_buffer[C1] |= PENELOPE_10MHZ_SOURCE;   // Penelope provides 10 Mhz
+      } else {
+        if (radio->atlas_clock_source_128mhz)
+          output_buffer[C1] |= MERCURY_122_88MHZ_SOURCE;
+        //output_buffer[C1] |= ((radio->atlas_clock_source_10mhz & 3) << 2);
+        output_buffer[C1] |= ATLAS_10MHZ_SOURCE;
+      }
     }
 
     output_buffer[C2]=0x00;
@@ -1144,6 +1181,7 @@ void ozy_send_buffer() {
 
 // TODO - add Alex TX relay, duplex, receivers Mercury board frequency
     output_buffer[C4]=0x04;  // duplex
+    output_buffer[C4]&=~0x80; //clear Common Mercury Frequency
 #ifdef PURESIGNAL
     nreceivers=(RECEIVERS*2)-1;
     nreceivers+=1; // for PS TX Feedback

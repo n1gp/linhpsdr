@@ -172,9 +172,9 @@ g_print("discover_receive_thread\n");
                         case OLD_DEVICE_METIS:
                             discovered[devices].device=DEVICE_METIS;
                             strcpy(discovered[devices].name,"Metis");
-                            discovered[devices].supported_receivers=5;
+                            discovered[devices].supported_receivers=(version <= 30) ? 5 : 6;
                             discovered[devices].supported_transmitters=1;
-                            discovered[devices].adcs=1;
+                            discovered[devices].adcs=2;
                             discovered[devices].frequency_min=0.0;
                             discovered[devices].frequency_max=61440000.0;
                             break;

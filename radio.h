@@ -158,7 +158,7 @@ typedef struct _radio {
   gboolean pll_locked;
   gint supply_volts;
 
-  gint mercury_software_version;
+  gint mercury_software_version[2];
   gint penelope_software_version;
   gint ozy_software_version;
 
